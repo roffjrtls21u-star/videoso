@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="ko" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>행복한세끼야</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Jua&amp;family=Noto+Sans+KR:wght@400;500;700&amp;display=swap" rel="stylesheet">
+  <style>
+    body {
+      box-sizing: border-box;
+    }
+    .font-jua {
+      font-family: 'Jua', sans-serif;
+    }
+    .font-noto {
+      font-family: 'Noto Sans KR', sans-serif;
+    }
+    /* Cute Background Pattern */
+    .bg-pattern {
+        background-color: #FFF8E1;
+        background-image: radial-gradient(#FDBA74 1px, transparent 1px);
+        background-size: 20px 20px;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 20px rgba(255, 183, 77, 0.3); }
+      50% { box-shadow: 0 0 40px rgba(255, 183, 77, 0.6); }
+    }
+    .float-animation {
+      animation: float 3s ease-in-out infinite;
+    }
+    .glow-animation {
+      animation: pulse-glow 2s ease-in-out infinite;
+    }
+    .meal-card {
+      transition: all 0.3s ease;
+    }
+    .meal-card:hover {
+      transform: translateY(-5px);
+    }
+    .ingredient-tag {
+      transition: all 0.2s ease;
+    }
+    .ingredient-tag:active {
+        transform: scale(0.95);
+    }
+    .loading-spinner {
+      border: 4px solid rgba(255, 183, 77, 0.3);
+      border-top: 4px solid #FFB74D;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+ </head>
+ <body class="h-full font-noto bg-pattern">
+  <div id="app-container" class="h-full overflow-auto relative">
+   <div class="min-h-full p-4 md:p-8">
+    
+    <!-- Header -->
+    <header class="text-center mb-8 pt-4 relative">
+     <div class="inline-block float-animation">
+      <h1 id="app-title" class="font-jua text-4xl md:text-5xl text-amber-700 mb-2 drop-shadow-sm">🍳 행복한세끼야 🥗</h1>
+     </div>
+     <p class="text-amber-600 text-lg font-medium">냉장고 속 재료로 5~6세 아이를 위한 식단을 만들어요!</p>
+    </header>
+
+    <!-- Input Section -->
+    <div class="max-w-2xl mx-auto mb-8">
+     <div class="bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl p-6 md:p-8 glow-animation border border-amber-100">
+      <div class="flex items-center gap-3 mb-4">
+       <span class="text-3xl">🧊</span>
+       <h2 class="font-jua text-2xl text-amber-700">냉장고 속 재료</h2>
+      </div>
+      <textarea id="ingredients-input" class="w-full h-32 p-4 border-2 border-amber-200 rounded-2xl focus:border-amber-400 focus:outline-none resize-none text-gray-700 placeholder-amber-300 bg-amber-50/50 text-lg" placeholder="예: 계란, 당근, 양파, 시금치, 두부, 밥..."></textarea>
+      
+      <div class="mt-4 flex flex-wrap gap-2" id="quick-ingredients">
+        <button onclick="addIngredient('계란')" class="ingredient-tag px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm hover:bg-amber-200 font-medium border border-amber-200">🥚 계란</button> 
+        <button onclick="addIngredient('두부')" class="ingredient-tag px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm hover:bg-amber-200 font-medium border border-amber-200">🧈 두부</button> 
+        <button onclick="addIngredient('당근')" class="ingredient-tag px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm hover:bg-amber-200 font-medium border border-amber-200">🥕 당근</button> 
+        <button onclick="addIngredient('양파')" class="ingredient-tag px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm hover:bg-amber-200 font-medium border border-amber-200">🧅 양파</button>
+        <button onclick="addIngredient('시금치')" class="ingredient-tag px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm hover:bg-amber-200 font-medium border border-amber-200">🥬 시금치</button>
+        <button onclick="addIngredient('우유')" class="ingredient-tag px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm hover:bg-amber-200 font-medium border border-amber-200">🥛 우유</button>
+      </div>
+      
+      <button id="generate-btn" onclick="generateMealPlan()" class="w-full mt-6 py-4 bg-gradient-to-r from-amber-400 to-orange-400 text-white font-jua text-xl rounded-2xl shadow-lg hover:from-amber-500 hover:to-orange-500 transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex justify-center items-center gap-2"> 
+        <span>🍽️ 식단 생성하기</span> 
+      </button>
+     </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loading-state" class="hidden max-w-2xl mx-auto text-center py-12">
+     <div class="loading-spinner mx-auto mb-6"></div>
+     <p class="font-jua text-xl text-amber-700 animate-pulse">영양가 있는 식단을 준비하고 있어요... 🍳</p>
+     <p class="text-amber-600 mt-2 text-sm">잠시만 기다려주세요!</p>
+    </div>
+
+    <!-- Results Section -->
+    <div id="results-section" class="hidden max-w-4xl mx-auto fade-in">
+     <!-- Meal Grid -->
+     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+      <!-- Breakfast -->
+      <div class="meal-card bg-white/90 backdrop-blur-sm rounded-3xl shadow-lg p-6 border-l-8 border-yellow-400">
+       <div class="flex items-center gap-3 mb-4">
+        <span class="text-4xl filter drop-shadow-md">🌅</span>
+        <div>
+         <h3 class="font-jua text-xl text-gray-800">아침</h3>
+         <p class="text-xs text-yellow-600 font-bold tracking-wider uppercase">Breakfast</p>
+        </div>
+       </div>
+       <div id="breakfast-menu" class="mt-2 space-y-2 text-gray-400 text-sm">준비 중...</div>
+      </div>
+      <!-- Lunch -->
+      <div class="meal-card bg-white/90 backdrop-blur-sm rounded-3xl shadow-lg p-6 border-l-8 border-orange-400">
+       <div class="flex items-center gap-3 mb-4">
+        <span class="text-4xl filter drop-shadow-md">☀️</span>
+        <div>
+         <h3 class="font-jua text-xl text-gray-800">점심</h3>
+         <p class="text-xs text-orange-600 font-bold tracking-wider uppercase">Lunch</p>
+        </div>
+       </div>
+       <div id="lunch-menu" class="mt-2 space-y-2 text-gray-400 text-sm">준비 중...</div>
+      </div>
+      <!-- Snack -->
+      <div class="meal-card bg-white/90 backdrop-blur-sm rounded-3xl shadow-lg p-6 border-l-8 border-pink-400">
+       <div class="flex items-center gap-3 mb-4">
+        <span class="text-4xl filter drop-shadow-md">🍪</span>
+        <div>
+         <h3 class="font-jua text-xl text-gray-800">간식</h3>
+         <p class="text-xs text-pink-600 font-bold tracking-wider uppercase">Snack</p>
+        </div>
+       </div>
+       <div id="snack-menu" class="mt-2 space-y-2 text-gray-400 text-sm">준비 중...</div>
+      </div>
+      <!-- Dinner -->
+      <div class="meal-card bg-white/90 backdrop-blur-sm rounded-3xl shadow-lg p-6 border-l-8 border-purple-400">
+       <div class="flex items-center gap-3 mb-4">
+        <span class="text-4xl filter drop-shadow-md">🌙</span>
+        <div>
+         <h3 class="font-jua text-xl text-gray-800">저녁</h3>
+         <p class="text-xs text-purple-600 font-bold tracking-wider uppercase">Dinner</p>
+        </div>
+       </div>
+       <div id="dinner-menu" class="mt-2 space-y-2 text-gray-400 text-sm">준비 중...</div>
+      </div>
+     </div>
+
+     <!-- Ingredient Checklist -->
+     <div class="bg-white/90 backdrop-blur-sm rounded-3xl shadow-lg p-6 md:p-8 mb-8 border border-amber-100">
+      <div class="flex items-center justify-between mb-6">
+          <div class="flex items-center gap-3">
+            <span class="text-3xl">📝</span>
+            <h3 class="font-jua text-2xl text-amber-700">재료 체크리스트</h3>
+          </div>
+          <button onclick="copyShoppingList()" id="copy-btn" class="flex items-center gap-1.5 px-4 py-2 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-xl text-sm font-medium transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+            </svg>
+            <span id="copy-btn-text">부족한 재료 복사</span>
+          </button>
+      </div>
+      <div id="ingredient-checklist" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        <!-- Checklist items will be inserted here -->
+      </div>
+     </div>
+
+     <!-- Nutritionist Tip -->
+     <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-3xl shadow-lg p-6 md:p-8 border-2 border-green-200">
+      <div class="flex items-center gap-3 mb-4">
+       <span class="text-4xl bg-white rounded-full p-1 shadow-sm">👩‍⚕️</span>
+       <div>
+        <h3 class="font-jua text-2xl text-green-700">영양사 선생님의 팁!</h3>
+        <p class="text-sm text-green-600 font-medium">우리 아이 식습관 지도 가이드</p>
+       </div>
+      </div>
+      <div id="nutrition-tip" class="text-gray-700 leading-relaxed bg-white/80 backdrop-blur rounded-2xl p-5 shadow-sm border border-green-100 text-lg">
+       <p>-</p>
+      </div>
+     </div>
+
+     <!-- Regenerate Button -->
+     <div class="text-center mt-8 pb-8">
+      <button onclick="resetAndRegenerate()" class="px-8 py-3 bg-white text-amber-600 font-jua text-lg rounded-2xl shadow-lg hover:bg-amber-50 transition-all border-2 border-amber-300 flex items-center gap-2 mx-auto"> 
+        <span>🔄 다른 식단 보기</span> 
+      </button>
+     </div>
+    </div>
+
+    <!-- Error Message -->
+    <div id="error-message" class="hidden max-w-2xl mx-auto mt-12">
+     <div class="bg-red-50 border-2 border-red-200 rounded-3xl p-6 text-center shadow-lg">
+      <span class="text-4xl mb-4 block">😢</span>
+      <h3 class="font-jua text-xl text-red-600 mb-2">앗, 문제가 생겼어요!</h3>
+      <p id="error-text" class="text-red-500 mb-4">다시 시도해 주세요.</p>
+      <button onclick="hideError()" class="px-6 py-2 bg-white text-red-600 border border-red-200 rounded-full hover:bg-red-50 transition-colors font-medium"> 확인 </button>
+     </div>
+    </div>
+
+   </div>
+  </div>
+
+  <script>
+    // State to hold current meal plan for features like Copy
+    let currentMealPlan = null;
+    let currentMissingIngredients = [];
+
+    const defaultConfig = {
+      app_title: '🍳 행복한세끼야 🥗',
+      input_placeholder: '예: 계란, 당근, 양파, 시금치, 두부...',
+      button_text: '🍽️ 식단 생성하기',
+      primary_color: '#F59E0B',
+      secondary_color: '#FFFFFF',
+      text_color: '#78350F',
+      accent_color: '#FB923C',
+      background_color: '#FFF8E1'
+    };
+
+    let config = { ...defaultConfig };
+
+    async function onConfigChange(cfg) {
+      config = { ...defaultConfig, ...cfg };
+      
+      document.getElementById('app-title').textContent = config.app_title || defaultConfig.app_title;
+      document.getElementById('ingredients-input').placeholder = config.input_placeholder || defaultConfig.input_placeholder;
+    }
+
+    if (window.elementSdk) {
+      window.elementSdk.init({
+        defaultConfig,
+        onConfigChange,
+      });
+    }
+
+    function addIngredient(ingredient) {
+      const input = document.getElementById('ingredients-input');
+      const currentValue = input.value;
+      const terms = currentValue.split(/[,,\s]+/).map(t => t.trim()).filter(t => t.length > 0);
+      
+      // Check for exact match (case insensitive)
+      const exists = terms.some(term => term.toLowerCase() === ingredient.toLowerCase());
+      
+      if (!exists) {
+        if (currentValue.trim().length > 0 && !currentValue.trim().endsWith(',')) {
+            input.value = currentValue.trim() + ', ' + ingredient;
+        } else {
+            input.value = currentValue.trim() + ingredient;
+        }
+        // Visual feedback
+        input.focus();
+        input.classList.add('border-amber-500', 'bg-amber-50');
+        setTimeout(() => input.classList.remove('border-amber-500', 'bg-amber-50'), 200);
+      }
+    }
+
+    function showLoading() {
+      document.getElementById('loading-state').classList.remove('hidden');
+      document.getElementById('results-section').classList.add('hidden');
+      document.getElementById('error-message').classList.add('hidden');
+      document.getElementById('generate-btn').disabled = true;
+      document.getElementById('generate-btn').innerHTML = '<span>🧑‍🍳 요리 중...</span>';
+    }
+
+    function hideLoading() {
+      document.getElementById('loading-state').classList.add('hidden');
+      document.getElementById('generate-btn').disabled = false;
+      document.getElementById('generate-btn').innerHTML = '<span>🍽️ 식단 생성하기</span>';
+    }
+
+    function showError(message) {
+      hideLoading();
+      document.getElementById('error-text').textContent = message;
+      document.getElementById('error-message').classList.remove('hidden');
+    }
+
+    function hideError() {
+      document.getElementById('error-message').classList.add('hidden');
+    }
+
+    function showResults() {
+      hideLoading();
+      const results = document.getElementById('results-section');
+      results.classList.remove('hidden');
+      // Smooth scroll to results
+      results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function createYoutubeSearchUrl(menuName) {
+      const searchQuery = encodeURIComponent(menuName + ' 레시피');
+      return `https://www.youtube.com/results?search_query=${searchQuery}`;
+    }
+
+    function updateMealCard(elementId, menuText) {
+      const container = document.getElementById(elementId);
+      container.innerHTML = ''; 
+
+      if (!menuText) {
+        container.textContent = '-';
+        return;
+      }
+
+      // Ensure menuText is a string before splitting
+      const textToProcess = String(menuText);
+      const menuItems = textToProcess.split(/[\n,]+/).map(item => item.trim()).filter(item => item.length > 0);
+
+      if (menuItems.length === 0) {
+        container.textContent = '-';
+        return;
+      }
+
+      menuItems.forEach(menu => {
+        const link = document.createElement('a');
+        link.href = createYoutubeSearchUrl(menu);
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.className = 'block bg-amber-50 hover:bg-amber-100 border border-amber-100 rounded-xl p-3 text-amber-800 font-medium transition-all hover:shadow-md flex items-center justify-between group mb-2 last:mb-0';
+        
+        link.innerHTML = `
+          <span class="truncate mr-2">${menu}</span>
+          <span class="text-amber-300 group-hover:text-amber-500 transition-colors flex-shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+            </svg>
+          </span>
+        `;
+        
+        container.appendChild(link);
+      });
+    }
+
+    function createChecklistItem(ingredient, isAvailable) {
+      const div = document.createElement('div');
+      // Use justify-between to place shopping icon at the end
+      div.className = `flex items-center justify-between p-3 rounded-xl transition-colors ${isAvailable ? 'bg-green-50/80 border border-green-200' : 'bg-red-50/80 border border-red-200 dashed-border'}`;
+      if (!isAvailable) div.style.borderStyle = 'dashed';
+
+      // Left container for checkbox and text
+      const leftContainer = document.createElement('div');
+      leftContainer.className = 'flex items-center gap-2 overflow-hidden';
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = isAvailable;
+      checkbox.disabled = true;
+      checkbox.className = `w-5 h-5 flex-shrink-0 rounded ${isAvailable ? 'accent-green-500' : 'accent-red-400'}`;
+      
+      const label = document.createElement('span');
+      label.textContent = ingredient;
+      label.className = `${isAvailable ? 'text-green-700 font-medium' : 'text-red-600 font-medium'} truncate`;
+      
+      leftContainer.appendChild(checkbox);
+      leftContainer.appendChild(label);
+      div.appendChild(leftContainer);
+      
+      // Add shopping link if ingredient is missing
+      if (!isAvailable) {
+        const shopLink = document.createElement('a');
+        shopLink.href = 'https://shopping.naver.com/ns/home/kurlynmart';
+        shopLink.target = '_blank';
+        shopLink.rel = 'noopener noreferrer';
+        shopLink.title = '장보러 가기';
+        shopLink.className = 'flex-shrink-0 text-red-400 hover:text-red-600 hover:bg-red-100 rounded-full p-1 transition-colors';
+        shopLink.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+        `;
+        div.appendChild(shopLink);
+      }
+      
+      return div;
+    }
+
+    function renderChecklist(availableIngredients, requiredIngredients) {
+      const container = document.getElementById('ingredient-checklist');
+      container.innerHTML = '';
+      
+      const allIngredients = [...new Set([...availableIngredients, ...requiredIngredients])];
+      const availableSet = new Set(availableIngredients.map(i => i.toLowerCase().trim()));
+      
+      currentMissingIngredients = []; // Reset missing list
+
+      allIngredients.forEach(ingredient => {
+        const cleanName = ingredient.trim();
+        if(!cleanName) return;
+
+        const isAvailable = availableSet.has(cleanName.toLowerCase());
+        
+        if (!isAvailable) {
+            currentMissingIngredients.push(cleanName);
+        }
+        
+        container.appendChild(createChecklistItem(cleanName, isAvailable));
+      });
+
+      // Update copy button visibility
+      const copyBtn = document.getElementById('copy-btn');
+      if (currentMissingIngredients.length === 0) {
+        copyBtn.style.display = 'none';
+      } else {
+        copyBtn.style.display = 'flex';
+      }
+    }
+
+    function copyShoppingList() {
+        if (!currentMissingIngredients || currentMissingIngredients.length === 0) return;
+        
+        const text = "🛒 [행복한세끼야] 장보기 리스트\n\n" + currentMissingIngredients.map(i => `- ${i}`).join('\n');
+        
+        try {
+            // Fallback for iframe restrictions (prioritized per instructions)
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            
+            // Ensure the textarea is part of the document but not visible
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-9999px';
+            textArea.style.top = '0';
+            
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            const successful = document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            if (!successful) {
+                throw new Error('execCommand copy failed');
+            }
+            
+            const btnText = document.getElementById('copy-btn-text');
+            const originalText = btnText.textContent;
+            btnText.textContent = "복사 완료! ✅";
+            setTimeout(() => {
+                btnText.textContent = originalText;
+            }, 2000);
+        } catch (err) {
+            console.error('Copy failed', err);
+            alert('복사에 실패했습니다. 텍스트를 직접 복사해주세요:\n\n' + text);
+        }
+    }
+
+    async function generateMealPlan() {
+      const ingredientsInput = document.getElementById('ingredients-input').value.trim();
+      
+      if (!ingredientsInput) {
+        showError('냉장고 속 재료를 입력해 주세요! 🥕');
+        document.getElementById('ingredients-input').focus();
+        return;
+      }
+
+      showLoading();
+
+      const availableIngredients = ingredientsInput.split(/[,，、\s]+/).filter(i => i.trim());
+      
+      const systemInstruction = `당신은 2025-2030 미국인 식생활 지침(DGA)과 한국 영양학회 기준을 모두 고려하는 유아동 전문 영양사입니다.
+        5~6세 아동이 있는 한국 가족을 위한 현실적이고 맛있는 식단을 추천해야 합니다.
+        
+        [필수 준수 사항]
+        1. 진짜 음식(Real Food): 초가공 식품(햄, 소시지 등)은 최소화하고 원물 위주 조리법 제안.
+        2. 유제품: 성장기를 위해 무가당 전지(Full-fat) 유제품 활용 권장.
+        3. 저당/저염: 과일로 단맛 대체, 아이 입맛에 맞춘 저염식.
+        4. 구성: 
+           - 아침: 바쁜 등원 시간을 고려한 간편하지만 든든한 메뉴 (토스트, 주먹밥, 오트밀 등)
+           - 점심: 활동량을 고려한 탄수화물+단백질 균형 메뉴 (덮밥, 파스타, 볶음밥 등)
+           - 저녁: 소화가 잘 되는 따뜻한 가정식 (국, 반찬, 밥)
+           - 간식: 과일, 견과류, 요거트 등 건강 간식
+        
+        [출력 형식]
+        반드시 지정된 JSON 스키마에 맞춰 응답하세요.`;
+
+      const prompt = `
+        사용자가 입력한 냉장고 재료를 기반으로 5~6세 아동이 있는 가족을 위한 [오늘의 하루 식단]을 만들어주세요.
+
+        보유 재료: ${availableIngredients.join(', ')}
+
+        요구사항:
+        1. 보유 재료를 최대한 활용하되, 영양 균형을 위해 꼭 필요한 재료는 추가해주세요.
+        2. 메뉴 이름은 한국어로 작성해주세요.
+        3. 영양 팁은 부모님에게 말하듯 친절하고 구체적으로 작성해주세요.
+      `;
+
+      try {
+        const apiKey = ""; // API key injected by environment
+        const maxRetries = 5;
+        let retryCount = 0;
+        let success = false;
+        let data;
+
+        while (retryCount < maxRetries && !success) {
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        systemInstruction: { parts: [{ text: systemInstruction }] },
+                        generationConfig: {
+                            responseMimeType: "application/json",
+                            responseSchema: {
+                                type: "OBJECT",
+                                properties: {
+                                    breakfast: { type: "STRING" },
+                                    lunch: { type: "STRING" },
+                                    snack: { type: "STRING" },
+                                    dinner: { type: "STRING" },
+                                    requiredIngredients: { 
+                                        type: "ARRAY", 
+                                        items: { type: "STRING" } 
+                                    },
+                                    nutritionTip: { type: "STRING" }
+                                },
+                                required: ["breakfast", "lunch", "snack", "dinner", "requiredIngredients", "nutritionTip"]
+                            }
+                        }
+                    })
+                });
+
+                if (!response.ok) {
+                    if (response.status === 429 || response.status >= 500) {
+                        throw new Error(`Server error: ${response.status}`);
+                    }
+                    throw new Error(`API Error: ${response.status}`);
+                }
+
+                data = await response.json();
+                success = true;
+            } catch (error) {
+                console.warn(`Attempt ${retryCount + 1} failed:`, error);
+                retryCount++;
+                if (retryCount >= maxRetries) throw error;
+                const delay = Math.pow(2, retryCount - 1) * 1000;
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+        
+        let contentText = data.candidates[0].content.parts[0].text;
+        const mealPlan = JSON.parse(contentText);
+        
+        currentMealPlan = mealPlan;
+
+        updateMealCard('breakfast-menu', mealPlan.breakfast);
+        updateMealCard('lunch-menu', mealPlan.lunch);
+        updateMealCard('snack-menu', mealPlan.snack);
+        updateMealCard('dinner-menu', mealPlan.dinner);
+
+        renderChecklist(availableIngredients, mealPlan.requiredIngredients || []);
+
+        document.getElementById('nutrition-tip').innerHTML = `<p>${mealPlan.nutritionTip}</p>`;
+
+        showResults();
+
+      } catch (error) {
+        console.error('Error:', error);
+        showError('식단을 생성하는데 문제가 생겼어요. 잠시 후 다시 시도해 주세요! 😢');
+      }
+    }
+
+    function resetAndRegenerate() {
+      document.getElementById('results-section').classList.add('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      document.getElementById('ingredients-input').focus();
+    }
+  </script>
+ </body>
+</html>
