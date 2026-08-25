@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>💎 3학년 사회 탐험대: 보석마을을 구해라!</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Jua & Noto Sans KR -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;600;800&display=swap">
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        .font-jua {
+            font-family: 'Jua', sans-serif;
+        }
+        canvas {
+            image-rendering: crisp-edges;
+        }
+        .modal-animate {
+            animation: popIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes popIn {
+            0% { transform: scale(0.85) translateY(20px); opacity: 0; }
+            100% { transform: scale(1) translateY(0); opacity: 1; }
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        .gem-glow {
+            filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.9));
+        }
+        .swatch {
+            width: 36px; height: 36px; border-radius: 10px; cursor: pointer;
+            border: 3px solid transparent; transition: all .15s;
+        }
+        .swatch.selected {
+            border-color: #f59e0b;
+            transform: scale(1.15);
+            box-shadow: 0 0 0 2px #fff;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-800 h-screen w-screen overflow-hidden flex flex-col justify-between">
+
+    <!-- TOP HUD HEADER -->
+    <header class="bg-slate-900/90 backdrop-blur-md border-b border-amber-500/30 px-4 py-2.5 flex items-center justify-between text-white z-20 shadow-xl">
+        <div class="flex items-center gap-3">
+            <div class="bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-jua text-xl px-4 py-1.5 rounded-2xl flex items-center gap-2 shadow-lg ring-2 ring-amber-300/50">
+                <i class="fa-solid fa-gem text-amber-100 text-lg animate-bounce"></i>
+                <span class="tracking-wide">보석마을 사회 탐험대</span>
+            </div>
+            <span class="hidden md:inline-flex items-center gap-2 text-xs text-amber-200/90 bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700">
+                <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                💡 건물 근처로 접근해야 탐험이 시작됩니다!
+            </span>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <button onclick="toggleSound()" class="bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 w-9 h-9 rounded-2xl flex items-center justify-center transition shadow active:scale-95">
+                <i id="sound-icon" class="fa-solid fa-volume-high"></i>
+            </button>
+            <button onclick="openAdminModal()" class="bg-indigo-800 hover:bg-indigo-700 text-indigo-100 border border-indigo-500/80 px-3.5 py-1.5 rounded-2xl text-xs font-jua flex items-center gap-1.5 shadow transition hover:scale-105 active:scale-95">
+                <i class="fa-solid fa-crown text-amber-400"></i>
+                <span>관리자</span>
+            </button>
+            <div id="gem-inventory" class="flex items-center gap-2 bg-slate-950/80 px-3.5 py-1.5 rounded-2xl border border-amber-500/30 shadow-inner"></div>
+        </div>
+    </header>
+
+    <!-- MAIN CANVAS PLAY AREA -->
+    <main class="relative flex-1 flex items-center justify-center overflow-hidden p-2">
+        <canvas id="gameCanvas" class="rounded-3xl shadow-2xl border-4 border-slate-800 bg-emerald-800 touch-none max-w-full max-h-full object-contain cursor-pointer"></canvas>
+
+        <div id="interaction-prompt" class="hidden absolute bottom-6 left-1/2 -translate-x-1/2 z-10 modal-animate">
+            <button onclick="openCurrentStation()" class="bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-slate-950 font-jua text-lg px-8 py-3.5 rounded-3xl shadow-2xl border-2 border-amber-200 flex items-center gap-3 transition-all transform hover:scale-110 active:scale-95 animate-bounce">
+                <i class="fa-solid fa-magnifying-glass-location text-2xl"></i>
+                <span id="prompt-station-name">건물 탐험하기</span>
+                <span class="bg-slate-900 text-amber-300 text-xs px-2.5 py-1 rounded-full font-sans font-bold">SPACE / 클릭</span>
+            </button>
+        </div>
+
+        <div class="absolute top-4 left-1/2 -translate-x-1/2 bg-slate-900/80 backdrop-blur-md px-5 py-2 rounded-full border border-amber-500/30 text-amber-200 text-xs font-jua tracking-wider pointer-events-none shadow-lg">
+            🗺️ <span id="guide-text">탐험가를 건물 근처로 이동시켜 보세요! (건물 클릭 시 자동 이동)</span>
+        </div>
+
+        <!-- 모바일 가상 패드 -->
+        <div class="md:hidden absolute bottom-4 left-4 z-10 grid grid-cols-3 gap-1 bg-slate-900/60 p-2 rounded-2xl backdrop-blur-sm border border-slate-700">
+            <div></div>
+            <button onmousedown="startMove('up')" onmouseup="stopMove()" ontouchstart="startMove('up'); event.preventDefault();" ontouchend="stopMove()" class="w-10 h-10 bg-slate-800 text-white rounded-xl active:bg-amber-500 font-bold">▲</button>
+            <div></div>
+            <button onmousedown="startMove('left')" onmouseup="stopMove()" ontouchstart="startMove('left'); event.preventDefault();" ontouchend="stopMove()" class="w-10 h-10 bg-slate-800 text-white rounded-xl active:bg-amber-500 font-bold">◀</button>
+            <button onmousedown="startMove('down')" onmouseup="stopMove()" ontouchstart="startMove('down'); event.preventDefault();" ontouchend="stopMove()" class="w-10 h-10 bg-slate-800 text-white rounded-xl active:bg-amber-500 font-bold">▼</button>
+            <button onmousedown="startMove('right')" onmouseup="stopMove()" ontouchstart="startMove('right'); event.preventDefault();" ontouchend="stopMove()" class="w-10 h-10 bg-slate-800 text-white rounded-xl active:bg-amber-500 font-bold">▶</button>
+        </div>
+    </main>
+
+    <!-- 첫 화면: 캐릭터 만들기 & 이름 입력 -->
+    <div id="character-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border-4 border-amber-400 rounded-3xl max-w-md w-full p-6 text-center space-y-4 shadow-2xl modal-animate max-h-[92vh] overflow-y-auto custom-scrollbar text-white">
+            <div class="text-4xl">🧭</div>
+            <h2 class="font-jua text-2xl text-amber-300">나만의 탐험가 만들기</h2>
+            <p class="text-xs text-slate-300">이름을 입력하고 보석마을을 탐험해 보세요!</p>
+
+            <div class="text-left space-y-1">
+                <label class="block font-jua text-sm text-amber-200">✏️ 탐험가 이름</label>
+                <input id="char-name-input" type="text" maxlength="8" placeholder="이름을 입력하세요" class="w-full border-2 border-amber-400/60 bg-slate-800 rounded-xl px-3 py-2 text-sm font-bold text-amber-100 focus:outline-none focus:border-amber-400">
+                <p id="char-name-warn" class="hidden text-xs text-rose-400 font-bold">⚠️ 이름을 입력해주세요!</p>
+            </div>
+
+            <div class="text-left space-y-1">
+                <label class="block font-jua text-sm text-amber-200">👕 옷 색깔</label>
+                <div id="jacket-swatches" class="flex flex-wrap gap-2"></div>
+            </div>
+
+            <button onclick="startAdventure()" class="w-full bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 text-slate-950 font-jua text-lg py-3 rounded-2xl shadow-lg transition mt-2">
+                🚀 탐험 시작하기
+            </button>
+        </div>
+    </div>
+
+    <!-- 탐험관 모달 (뉴스 & 퀴즈) -->
+    <div id="station-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-40 flex items-center justify-center p-3 md:p-6">
+        <div class="bg-slate-50 rounded-3xl max-w-2xl w-full max-h-[90vh] shadow-2xl flex flex-col overflow-hidden modal-animate border-4 border-amber-400">
+            
+            <!-- Modal Header -->
+            <div id="modal-header-bg" class="p-4 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 flex items-center justify-between shadow-md">
+                <div class="flex items-center gap-3">
+                    <span id="modal-icon" class="text-3xl bg-white/30 p-2 rounded-2xl">🏠</span>
+                    <div>
+                        <h2 id="modal-title" class="font-jua text-2xl tracking-wide">탐험관</h2>
+                        <p id="modal-subtitle" class="text-xs font-bold text-amber-950/80">3학년 사회 탐험대</p>
+                    </div>
+                </div>
+                <button onclick="closeModal()" class="text-slate-900/70 hover:text-slate-950 bg-black/10 hover:bg-black/20 rounded-full w-9 h-9 flex items-center justify-center text-xl transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Tab Navigation Bar -->
+            <div class="flex border-b border-slate-200 bg-white px-4 pt-2 gap-2 text-sm font-jua">
+                <button id="tab-btn-news" onclick="switchTab('news')" class="flex-1 py-3 rounded-t-2xl border-b-2 border-amber-500 text-amber-600 bg-amber-50/80 flex items-center justify-center gap-2 font-bold shadow-sm">
+                    <i class="fa-solid fa-newspaper text-base"></i>
+                    <span>1단계: 시사 뉴스 탐구</span>
+                </button>
+                <button id="tab-btn-quiz" onclick="switchTab('quiz')" class="flex-1 py-3 rounded-t-2xl border-b-2 border-transparent text-slate-400 hover:text-slate-600 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-circle-question text-base"></i>
+                    <span>2단계: 보석 퀴즈 도전</span>
+                </button>
+            </div>
+
+            <!-- Modal Content Body -->
+            <div class="p-5 overflow-y-auto custom-scrollbar flex-1 space-y-4 bg-slate-50">
+                
+                <!-- TAB 1: NEWS ARTICLE & THUMBNAIL VIDEO CARD -->
+                <div id="tab-content-news" class="space-y-4">
+                    <div class="bg-white p-4.5 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+                        <div class="flex items-center justify-between text-xs text-amber-700 font-bold border-b border-slate-100 pb-2">
+                            <span id="article-source">KBS 뉴스 / 초등 사회 3학년</span>
+                            <span class="bg-amber-100 px-2.5 py-0.5 rounded-full">3학년 추천 뉴스</span>
+                        </div>
+                        <h3 id="article-headline" class="font-jua text-xl text-slate-900 pt-1">뉴스 헤드라인</h3>
+                        <p id="article-body" class="text-sm text-slate-700 leading-relaxed pt-1">기사 내용이 들어갑니다.</p>
+                        
+                        <div class="bg-amber-50/80 p-3 rounded-xl border border-amber-200/80 mt-3 text-xs text-amber-950 flex items-start gap-2">
+                            <i class="fa-solid fa-lightbulb text-amber-500 text-base mt-0.5 shrink-0"></i>
+                            <div>
+                                <span id="vocab-word" class="font-bold text-amber-900">저출생:</span>
+                                <span id="vocab-desc" class="text-slate-700">태어나는 아기 수가 줄어드는 현상</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 요청하신 이미지 맞춤형 썸네일 비디오 배너 카드 -->
+                    <div class="bg-[#111827] text-white rounded-2xl p-4 shadow-md flex flex-col sm:flex-row items-center gap-4.5 border border-slate-800">
+                        <!-- 썸네일 이미지 및 플레이 버튼 -->
+                        <div class="relative w-full sm:w-48 h-28 rounded-xl overflow-hidden shrink-0 bg-slate-900 border border-slate-700/80 shadow-inner">
+                            <img id="video-thumb" src="" alt="뉴스 썸네일" class="w-full h-full object-cover">
+                            <div class="absolute inset-0 bg-black/25 flex items-center justify-center">
+                                <div class="w-11 h-11 rounded-full bg-[#eab308] flex items-center justify-center shadow-lg transform transition hover:scale-110">
+                                    <i class="fa-solid fa-play text-slate-900 text-base ml-0.5"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 뉴스 제목 및 시청 버튼 -->
+                        <div class="flex-1 space-y-2.5 text-center sm:text-left">
+                            <h4 id="video-desc-text" class="text-sm font-bold text-slate-100 leading-snug line-clamp-2">초등 입학 첫 30만 명 아래로…교실 풍경 변화</h4>
+                            <a id="video-link-btn" href="#" target="_blank" class="inline-flex items-center gap-2 bg-[#e11d48] hover:bg-[#be123c] text-white font-bold text-xs px-4 py-2.5 rounded-xl transition shadow-md">
+                                <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                                <span>뉴스 동영상 시청하기</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="pt-2">
+                        <button onclick="switchTab('quiz')" class="w-full bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-jua text-base py-3 rounded-2xl shadow-md transition flex items-center justify-center gap-2">
+                            <span>뉴스 탐구 완료! 퀴즈 풀고 보석 얻기</span>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- TAB 2: GEM QUIZ -->
+                <div id="tab-content-quiz" class="hidden space-y-4">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <div class="flex items-center gap-2 text-amber-600 font-jua text-sm">
+                            <i class="fa-solid fa-gem text-amber-500"></i>
+                            <span>보석 획득 퀴즈</span>
+                        </div>
+                        <h3 id="quiz-question" class="font-jua text-xl text-slate-900 leading-snug">Q. 질문 내용이 들어갑니다.</h3>
+                        
+                        <div id="quiz-options" class="space-y-2.5">
+                            <!-- Dynamically generated option buttons -->
+                        </div>
+                    </div>
+
+                    <div id="quiz-feedback" class="hidden p-4 rounded-2xl font-jua text-center text-lg shadow-sm">
+                        <!-- Feedback message -->
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- GRAND REWARD & CERTIFICATE MODAL -->
+    <div id="reward-modal" class="hidden fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-gradient-to-b from-amber-50 via-white to-amber-100 rounded-3xl max-w-lg w-full p-6 text-center space-y-4 shadow-2xl modal-animate border-4 border-amber-400 ring-8 ring-amber-300/30">
+            <div class="animate-bounce inline-block text-5xl pt-2">🏆</div>
+            <h2 class="font-jua text-3xl text-amber-950 tracking-wide">축하합니다! 보석마을 구출 완료!</h2>
+            <p class="text-xs text-slate-600 font-bold">6가지 중요한 현대 사회 변화를 모두 올바르게 탐구했습니다.</p>
+            
+            <div id="reward-gem-grid" class="grid grid-cols-3 gap-2.5 bg-amber-100/60 p-3.5 rounded-2xl border border-amber-300"></div>
+
+            <div class="bg-white p-4.5 rounded-2xl border-2 border-amber-200 text-left space-y-2.5 shadow-sm">
+                <div class="text-center border-b border-amber-200/80 pb-2">
+                    <p class="font-jua text-xl text-slate-900">📜 3학년 사회 탐험가 훈장</p>
+                </div>
+                <div class="text-xs text-slate-700 space-y-2 leading-relaxed">
+                    <div>
+                        <label class="block font-bold text-slate-800 mb-1">• 탐험가 이름:</label>
+                        <div class="flex gap-2">
+                            <input id="student-name-input" type="text" placeholder="이름을 입력하세요" class="flex-1 border-2 border-amber-300 px-3 py-1.5 font-bold text-amber-900 focus:outline-none focus:border-amber-500 bg-amber-50/80 rounded-xl text-sm">
+                            <button id="btn-submit-certificate" onclick="submitCompletion()" class="bg-amber-500 hover:bg-amber-600 text-white font-jua px-4 py-1.5 rounded-xl text-xs shadow transition shrink-0">
+                                명단 등록
+                            </button>
+                        </div>
+                        <p id="submit-status-msg" class="hidden text-xs font-bold mt-1"></p>
+                    </div>
+                    <p>• <strong>탐험 영토:</strong> 현대 사회 6대 변화 (저출생, 고령화, AI기술, 1인가구, 반려동물, 다문화)</p>
+                    <p>• <strong>탐험 결과:</strong> 위 학생은 올바른 뉴스 기사 탐구와 보석 퀴즈 해결로 사회 변화를 깊이 이해하였음을 증명합니다.</p>
+                </div>
+            </div>
+
+            <div class="flex gap-2.5">
+                <button onclick="location.reload()" class="flex-1 bg-slate-700 hover:bg-slate-800 text-white font-jua text-lg py-3 rounded-2xl transition shadow">
+                    🔄 다시 탐험하기
+                </button>
+                <button onclick="closeRewardModal()" class="flex-1 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-jua text-lg py-3 rounded-2xl shadow-lg transition">
+                    ✨ 마을 계속 둘러보기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADMIN DASHBOARD MODAL -->
+    <div id="admin-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-50 rounded-3xl max-w-md w-full max-h-[85vh] shadow-2xl flex flex-col overflow-hidden modal-animate border-4 border-indigo-500 ring-8 ring-black/30">
+            
+            <div class="p-4 bg-gradient-to-r from-indigo-600 to-violet-700 text-white flex items-center justify-between shadow-md">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl bg-white/20 p-2 rounded-xl border border-white/30">👑</span>
+                    <div>
+                        <h2 class="font-jua text-2xl tracking-wide">탐험 완수 학생 명단</h2>
+                        <p class="text-xs text-indigo-200">실시간 등록 학생 목록 (관리자 페이지)</p>
+                    </div>
+                </div>
+                <button onclick="closeAdminModal()" class="text-white/80 hover:text-white bg-black/20 hover:bg-black/40 rounded-full w-8 h-8 flex items-center justify-center text-lg transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="px-5 py-3 bg-indigo-50 border-b border-indigo-100 flex items-center justify-between">
+                <span class="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
+                    <i class="fa-solid fa-award text-amber-500"></i> 사회 탐험대 완수자
+                </span>
+                <span id="admin-total-count" class="bg-indigo-600 text-white text-xs font-jua px-3 py-0.5 rounded-full">0명</span>
+            </div>
+
+            <div id="admin-student-list" class="p-4 overflow-y-auto custom-scrollbar flex-1 space-y-2.5 bg-slate-100/70"></div>
+
+            <div class="p-3 bg-white border-t border-slate-200 text-center">
+                <button onclick="closeAdminModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-jua text-base py-2.5 rounded-xl shadow transition">
+                    닫기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FIREBASE CLOUD DATA PERSISTENCE -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'jewel-village-app';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "demo-api-key",
+            authDomain: "demo.firebaseapp.com",
+            projectId: "demo-project"
+        };
+
+        let app, db, auth;
+        let isAuthReady = false;
+
+        try {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+
+            const initAuth = async () => {
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                    isAuthReady = true;
+                    listenToCompletions();
+                } catch (e) {
+                    console.error("Auth error:", e);
+                }
+            };
+            initAuth();
+        } catch (e) {
+            console.error("Firebase init error:", e);
+        }
+
+        const getCompletionsCol = () => collection(db, 'artifacts', appId, 'public', 'data', 'completions');
+
+        window.submitCompletion = async function() {
+            const input = document.getElementById('student-name-input');
+            const name = input ? input.value.trim() : '';
+            const msgEl = document.getElementById('submit-status-msg');
+
+            if (!name) {
+                if (msgEl) {
+                    msgEl.textContent = '⚠️ 이름을 입력해주세요!';
+                    msgEl.className = 'text-xs font-bold text-rose-600 mt-1 block';
+                }
+                return;
+            }
+
+            if (!isAuthReady) {
+                if (msgEl) {
+                    msgEl.textContent = '⏳ 서버 연결 중입니다. 잠시 후 다시 시도해 주세요.';
+                    msgEl.className = 'text-xs font-bold text-amber-600 mt-1 block';
+                }
+                return;
+            }
+
+            try {
+                const now = new Date();
+                const dateStr = `${now.getFullYear()}.${now.getMonth()+1}.${now.getDate()} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+
+                await addDoc(getCompletionsCol(), {
+                    studentName: name,
+                    completedAt: dateStr,
+                    timestamp: Date.now()
+                });
+
+                if (msgEl) {
+                    msgEl.textContent = '✅ 선생님 관리자 페이지에 명단이 등록되었습니다!';
+                    msgEl.className = 'text-xs font-bold text-emerald-600 mt-1 block';
+                }
+                const btn = document.getElementById('btn-submit-certificate');
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerText = '✅ 등록 완료';
+                    btn.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+            } catch (err) {
+                console.error("Save error:", err);
+                if (msgEl) {
+                    msgEl.textContent = '❌ 등록에 실패했습니다. 다시 시도해 보세요.';
+                    msgEl.className = 'text-xs font-bold text-rose-600 mt-1 block';
+                }
+            }
+        };
+
+        window.deleteCompletionDoc = async function(docId) {
+            if (!docId || !isAuthReady) return;
+            try {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'completions', docId));
+            } catch (e) {
+                console.error("Delete doc error:", e);
+            }
+        };
+
+        function listenToCompletions() {
+            if (!db) return;
+            onSnapshot(getCompletionsCol(), (snapshot) => {
+                const docs = [];
+                snapshot.forEach(docSnap => {
+                    docs.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                docs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                renderAdminList(docs);
+            }, (err) => {
+                console.error("onSnapshot error:", err);
+            });
+        }
+
+        function renderAdminList(items) {
+            const listContainer = document.getElementById('admin-student-list');
+            const countBadge = document.getElementById('admin-total-count');
+            if (countBadge) countBadge.textContent = `${items.length}명`;
+
+            if (!listContainer) return;
+            if (items.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="text-center py-8 text-slate-400 font-jua">
+                        <i class="fa-solid fa-folder-open text-3xl mb-2 block text-slate-300"></i>
+                        아직 탐험을 완료한 학생이 없습니다.
+                    </div>`;
+                return;
+            }
+
+            listContainer.innerHTML = items.map((item, index) => `
+                <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between hover:border-indigo-300 transition">
+                    <div class="flex items-center gap-3">
+                        <span class="w-7 h-7 rounded-full bg-indigo-100 text-indigo-800 font-jua text-xs flex items-center justify-center font-bold">
+                            ${index + 1}
+                        </span>
+                        <div>
+                            <p class="font-jua text-base text-slate-900">${escapeHtml(item.studentName || '무명 탐험가')}</p>
+                            <p class="text-[11px] text-slate-400"><i class="fa-regular fa-clock mr-1"></i>${item.completedAt || ''}</p>
+                        </div>
+                    </div>
+                    <button onclick="deleteCompletionDoc('${item.id}')" title="삭제" class="text-slate-300 hover:text-rose-500 p-2 rounded-lg transition">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+    </script>
+
+    <script>
+        const STATIONS = [
+            {
+                id: 'lowbirth',
+                title: '저출생 탐험관',
+                subtitle: '태어나는 아기 수가 줄어들어요',
+                icon: '👶',
+                gemName: '루비 (사랑)',
+                gemColor: '#ef4444',
+                color: 'from-rose-500 to-red-600',
+                x: 140, y: 130, width: 110, height: 95,
+                article: {
+                    headline: '초등학교 입학 동생 수가 줄어들고 있어요',
+                    source: 'KBS 뉴스 / 초등 사회 3학년',
+                    body: '태어나는 아기 수가 갈수록 줄어들면서(저출생) 초등학교에 입학하는 1학년 동생들의 수가 많이 감소했습니다. 우리 동네 학교와 유치원에서도 아기 탄생을 축하하고 어린이들을 위한 여러 가지 새로운 정책을 펼치고 있습니다.',
+                    vocab: '저출생',
+                    vocabDesc: '태어나는 아기의 수가 갈수록 줄어드는 사회 현상',
+                    videoTitle: '초등 입학 첫 30만 명 아래로…교실 풍경 변화',
+                    videoThumb: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=600&auto=format&fit=crop',
+                    videoUrl: 'https://v.daum.net/v/tK1eaT2uWN'
+                },
+                quiz: {
+                    question: '태어나는 아기 수가 줄어들면서 초등학교 신입생 수가 줄어드는 사회 현상을 무엇이라 부를까요?',
+                    options: ['저출생', '고령화', '다문화', '지능정보화'],
+                    answer: 0,
+                    explanation: '아기 수가 줄어드는 것을 "저출생"이라고 부릅니다.'
+                }
+            },
+            {
+                id: 'aging',
+                title: '고령화 탐험관',
+                subtitle: '노인 인구 비율이 높아져요',
+                icon: '👵',
+                gemName: '호박 (지혜)',
+                gemColor: '#f59e0b',
+                color: 'from-amber-500 to-orange-600',
+                x: 440, y: 130, width: 110, height: 95,
+                article: {
+                    headline: '할머니, 할아버지가 일하시는 활기찬 실버 카페',
+                    source: '연합뉴스TV / 시니어 소식',
+                    body: '우리 사회에 의학이 발전하면서 오래 살게 되는 할머니, 할아버지가 많아졌습니다(고령화). 요즘은 어르신들이 커피를 내리는 실버 카페나 어르신 스마트폰 배움터 등 활기차게 사회활동을 하시는 곳이 늘어나고 있습니다.',
+                    vocab: '고령화',
+                    vocabDesc: '전체 인구 중에서 노인(할머니, 할아버지)의 비율이 높아지는 것',
+                    videoTitle: '인생 2막은 바리스타…카페 운영 나선 어르신들',
+                    videoThumb: 'https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=600&auto=format&fit=crop',
+                    videoUrl: 'https://www.youtube.com/watch?v=Lhh7rrKOEVI'
+                },
+                quiz: {
+                    question: '할머니, 할아버지가 손수 음료를 만들며 즐겁게 일하시는 우리 동네 카페를 무엇이라고 부를까요?',
+                    options: ['로봇 카페', '실버 카페', '무인 카페', '어린이 카페'],
+                    answer: 1,
+                    explanation: '어르신들이 함께 일하시는 카페를 "실버 카페"라고 부릅니다.'
+                }
+            },
+            {
+                id: 'ai_tech',
+                title: '지능정보화 탐험관',
+                subtitle: '인공지능과 정보기술이 발전해요',
+                icon: '🤖',
+                gemName: '사파이어 (기술)',
+                gemColor: '#3b82f6',
+                color: 'from-blue-500 to-indigo-600',
+                x: 740, y: 130, width: 110, height: 95,
+                article: {
+                    headline: '스스로 길 찾고 로봇이 음식 배달해요',
+                    source: 'KBS 뉴스 / 미래기술',
+                    body: '컴퓨터와 인공지능(AI) 기술이 더욱 발전하면서(지능정보화) 로봇이 식당에서 음식을 나르고, 도로에서 혼자 배달하는 모습을 쉽게 볼 수 있습니다. 도서관에서도 AI가 책을 읽어주는 서비스가 확대되고 있습니다.',
+                    vocab: '지능정보화',
+                    vocabDesc: '인공지능(AI)과 정보통신 기술이 발전하여 우리 생활이 편리해지는 현상',
+                    videoTitle: '자율주행 배달로봇 등장…일상 속 로봇 서비스',
+                    videoThumb: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=600&auto=format&fit=crop',
+                    videoUrl: 'https://www.youtube.com/watch?v=n8jgq6ZuPBQ'
+                },
+                quiz: {
+                    question: '스스로 장애물을 피하고 길을 찾아 음식을 나르거나 배달하는 로봇 기술은 무엇일까요?',
+                    options: ['자율주행 및 AI 로봇', '수동 마차', '증기 기관', '손수레'],
+                    answer: 0,
+                    explanation: '인공지능을 이용해 스스로 움직이는 자율주행 로봇입니다.'
+                }
+            },
+            {
+                id: 'single_house',
+                title: '1인 가구 탐험관',
+                subtitle: '혼자 사는 가구가 많아져요',
+                icon: '🏠',
+                gemName: '토파즈 (자립)',
+                gemColor: '#eab308',
+                color: 'from-yellow-500 to-amber-600',
+                x: 140, y: 390, width: 110, height: 95,
+                article: {
+                    headline: '마트에 등장한 반쪽 수박과 미니 소포장 과일',
+                    source: 'SBS 뉴스 / 우리동네 경제',
+                    body: '혼자서 살아가는 1인 가구가 많아지면서 마트나 편의점의 풍경이 변하고 있습니다. 수박 한 통을 다 먹기 힘든 사람들을 위해 조각으로 나누어 팔거나, 야채나 과일을 적은 양만큼 포장해 파는 상품이 인기입니다.',
+                    vocab: '1인 가구',
+                    vocabDesc: '혼자서 독립하여 살아가는 1인 가정',
+                    videoTitle: '1인 가구에 딱 맞게…소포장 신선식품 인기',
+                    videoThumb: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&auto=format&fit=crop',
+                    videoUrl: 'https://biz.sbs.co.kr/article/20000164763'
+                },
+                quiz: {
+                    question: '1인 가구가 늘어나면서 마트나 편의점에서 인기를 얻게 된 상품의 모습은 무엇일까요?',
+                    options: ['아주 큰 대용량 상자 상품', '혼자 먹기 편한 소포장 미니 상품', '원플러스원 묶음 세트만 판매', '어린이용 장난감 전용 상품'],
+                    answer: 1,
+                    explanation: '혼자 사는 사람들을 위해 적은 양으로 포장한 소포장 상품이 인기입니다.'
+                }
+            },
+            {
+                id: 'pet_family',
+                title: '반려동물 탐험관',
+                subtitle: '반려동물과 함께하는 가정이 늘어요',
+                icon: '🐾',
+                gemName: '에메랄드 (생명)',
+                gemColor: '#10b981',
+                color: 'from-emerald-500 to-teal-600',
+                x: 440, y: 390, width: 110, height: 95,
+                article: {
+                    headline: '모두가 행복한 동네 공원 펫티켓 지키기',
+                    source: '대한민국 정책브리핑 / 생명 존중',
+                    body: '강아지, 고양이 등 반려동물을 가족처럼 키우는 가정이 크게 늘어났습니다. 사람과 반려동물이 공공장소에서 함께 행복하게 지내기 위해 목줄을 매고 배변 봉투를 꼭 챙기는 예의인 "펫티켓" 캠페인이 이루어지고 있습니다.',
+                    vocab: '펫티켓',
+                    vocabDesc: '반려동물(Pet)과 에티켓(Etiquette)의 합성어로, 반려동물을 키울 때 지켜야 할 예의',
+                    videoTitle: '반려견과 뛰고 구르며 도심서 배우는 펫티켓',
+                    videoThumb: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=600&auto=format&fit=crop',
+                    videoUrl: 'https://www.youtube.com/watch?v=Mzv_v-RztoI'
+                },
+                quiz: {
+                    question: '반려동물과 이웃 주민이 함께 공원에서 행복하게 지내기 위해 지켜야 하는 에티켓을 무엇이라 하나요?',
+                    options: ['펫티켓', '골프에티켓', '교통안전', '식사예절'],
+                    answer: 0,
+                    explanation: '반려동물을 동반할 때 지켜야 하는 예의를 "펫티켓"이라고 합니다.'
+                }
+            },
+            {
+                id: 'multiculture',
+                title: '다문화 탐험관',
+                subtitle: '다양한 문화적 배경이 어우러져요',
+                icon: '🌏',
+                gemName: '자수정 (화합)',
+                gemColor: '#a855f7',
+                color: 'from-purple-500 to-violet-600',
+                x: 740, y: 390, width: 110, height: 95,
+                article: {
+                    headline: '한 교실에 여러 나라 문화가 어우러져요',
+                    source: 'EBS 교육뉴스 / 다문화 교실',
+                    body: '서로 다른 나라나 문화적 배경을 가진 가족들이 모여 살면서(다문화) 우리 교실에서도 여러 나라의 인사말과 전통 의상, 음식을 서로 배우는 다문화 문화 체험 축제가 활발하게 열리고 있습니다.',
+                    vocab: '다문화',
+                    vocabDesc: '다양한 국적이나 문화적 배경이 한 사회에 함께 어우러져 살아가는 것',
+                    videoTitle: '한 학교에 22개 나라 공존…다문화 학생 증가',
+                    videoThumb: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=600&auto=format&fit=crop',
+                    videoUrl: 'https://www.youtube.com/watch?v=fLmWsAsi7lg'
+                },
+                quiz: {
+                    question: '서로 다른 문화적 배경을 가진 친구들과 교실에서 사이좋게 지내기 위해 가장 필요한 마음가짐은?',
+                    options: ['서로의 차이를 인정하고 존중하는 마음', '나와 다른 친구와는 놀지 않기', '우리 문화만 무조건 맞다고 주장하기', '다른 나라 말을 절대 배우지 않기'],
+                    answer: 0,
+                    explanation: '다문화 사회에서는 서로의 문화를 다름으로 인정하고 존중해야 합니다.'
+                }
+            }
+        ];
+
+        let collectedGems = new Set();
+        let currentStation = null;
+        let soundEnabled = true;
+        let audioCtx = null;
+
+        let canvas = null;
+        let ctx = null;
+
+        const JACKET_COLORS = ['#f59e0b', '#ef4444', '#3b82f6', '#10b981', '#a855f7', '#ec4899'];
+
+        const player = {
+            x: 500,
+            y: 300,
+            radius: 16,
+            speed: 4.8,
+            name: '',
+            jacketColor: '#f59e0b',
+            isMoving: false,
+            targetX: null,
+            targetY: null
+        };
+
+        const keysPressed = {};
+        let touchMoveDirection = null;
+
+        function initGameCanvas() {
+            canvas = document.getElementById('gameCanvas');
+            if (!canvas) return false;
+            ctx = canvas.getContext('2d');
+            canvas.width = 1000;
+            canvas.height = 600;
+            return true;
+        }
+
+        function gameLoop() {
+            if (canvas && ctx) {
+                updatePlayerPosition();
+                renderGame();
+                checkNearStation();
+            }
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updatePlayerPosition() {
+            if (!canvas) return;
+
+            let dx = 0;
+            let dy = 0;
+
+            if (keysPressed['ArrowUp'] || keysPressed['w'] || keysPressed['W'] || touchMoveDirection === 'up') dy -= 1;
+            if (keysPressed['ArrowDown'] || keysPressed['s'] || keysPressed['S'] || touchMoveDirection === 'down') dy += 1;
+            if (keysPressed['ArrowLeft'] || keysPressed['a'] || keysPressed['A'] || touchMoveDirection === 'left') dx -= 1;
+            if (keysPressed['ArrowRight'] || keysPressed['d'] || keysPressed['D'] || touchMoveDirection === 'right') dx += 1;
+
+            if (dx !== 0 || dy !== 0) {
+                player.targetX = null;
+                player.targetY = null;
+            } else if (player.targetX !== null && player.targetY !== null) {
+                const diffX = player.targetX - player.x;
+                const diffY = player.targetY - player.y;
+                const dist = Math.hypot(diffX, diffY);
+
+                if (dist > 4) {
+                    dx = diffX / dist;
+                    dy = diffY / dist;
+                } else {
+                    player.targetX = null;
+                    player.targetY = null;
+                }
+            }
+
+            if (dx !== 0 && dy !== 0) {
+                const len = Math.hypot(dx, dy);
+                dx /= len;
+                dy /= len;
+            }
+
+            if (dx !== 0 || dy !== 0) {
+                player.x += dx * player.speed;
+                player.y += dy * player.speed;
+                player.isMoving = true;
+                if (Math.random() < 0.08) playAudioSfx('step');
+            } else {
+                player.isMoving = false;
+            }
+
+            player.x = Math.max(player.radius + 15, Math.min(canvas.width - player.radius - 15, player.x));
+            player.y = Math.max(player.radius + 15, Math.min(canvas.height - player.radius - 15, player.y));
+        }
+
+        function renderGame() {
+            if (!ctx || !canvas) return;
+
+            const bgGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            bgGradient.addColorStop(0, '#065f46');
+            bgGradient.addColorStop(1, '#047857');
+            ctx.fillStyle = bgGradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#34d399';
+            for (let i = 30; i < canvas.width; i += 70) {
+                for (let j = 30; j < canvas.height; j += 70) {
+                    ctx.beginPath();
+                    ctx.arc(i, j, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            const trees = [{x: 40, y: 50}, {x: 960, y: 50}, {x: 40, y: 550}, {x: 960, y: 550}];
+            trees.forEach(t => {
+                ctx.fillStyle = '#064e3b';
+                ctx.beginPath();
+                ctx.arc(t.x, t.y, 22, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#10b981';
+                ctx.beginPath();
+                ctx.arc(t.x - 3, t.y - 3, 16, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            ctx.lineWidth = 36;
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            ctx.beginPath();
+            ctx.moveTo(100, 180); ctx.lineTo(900, 180);
+            ctx.moveTo(100, 440); ctx.lineTo(900, 440);
+            ctx.moveTo(195, 180); ctx.lineTo(195, 440);
+            ctx.moveTo(495, 180); ctx.lineTo(495, 440);
+            ctx.moveTo(795, 180); ctx.lineTo(795, 440);
+            ctx.stroke();
+
+            ctx.lineWidth = 28;
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.stroke();
+
+            STATIONS.forEach(st => {
+                const isCollected = collectedGems.has(st.id);
+
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.beginPath();
+                ctx.ellipse(st.x + st.width/2, st.y + st.height - 2, st.width/2 + 8, 12, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(st.x, st.y + 32, st.width, st.height - 32);
+                ctx.strokeStyle = '#475569';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(st.x, st.y + 32, st.width, st.height - 32);
+
+                ctx.fillStyle = '#bae6fd';
+                ctx.fillRect(st.x + 12, st.y + 44, 20, 20);
+                ctx.fillRect(st.x + st.width - 32, st.y + 44, 20, 20);
+                ctx.strokeStyle = '#0284c7';
+                ctx.lineWidth = 1.5;
+                ctx.strokeRect(st.x + 12, st.y + 44, 20, 20);
+                ctx.strokeRect(st.x + st.width - 32, st.y + 44, 20, 20);
+
+                ctx.fillStyle = st.gemColor;
+                ctx.beginPath();
+                ctx.moveTo(st.x - 12, st.y + 34);
+                ctx.lineTo(st.x + st.width / 2, st.y - 12);
+                ctx.lineTo(st.x + st.width + 12, st.y + 34);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = '#1e293b';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                ctx.fillStyle = '#854d0e';
+                ctx.fillRect(st.x + st.width/2 - 12, st.y + st.height - 32, 24, 32);
+                ctx.fillStyle = '#fef08a';
+                ctx.beginPath();
+                ctx.arc(st.x + st.width/2 + 6, st.y + st.height - 16, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.font = '26px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(st.icon, st.x + st.width/2, st.y + 24);
+
+                ctx.fillStyle = '#0f172a';
+                ctx.beginPath();
+                if (ctx.roundRect) {
+                    ctx.roundRect(st.x - 12, st.y + st.height + 8, st.width + 24, 24, 8);
+                } else {
+                    ctx.rect(st.x - 12, st.y + st.height + 8, st.width + 24, 24);
+                }
+                ctx.fill();
+                ctx.strokeStyle = st.gemColor;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.fillStyle = '#fde047';
+                ctx.font = 'bold 12px "Jua", sans-serif';
+                ctx.fillText(st.title, st.x + st.width/2, st.y + st.height + 24);
+
+                if (isCollected) {
+                    ctx.font = '24px sans-serif';
+                    ctx.fillText('💎', st.x + st.width/2, st.y - 22);
+                } else {
+                    const pulse = Math.sin(Date.now() / 180) * 4;
+                    ctx.fillStyle = '#facc15';
+                    ctx.beginPath();
+                    ctx.arc(st.x + st.width/2, st.y - 24 + pulse, 11, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#0f172a';
+                    ctx.font = 'bold 12px "Jua", sans-serif';
+                    ctx.fillText('?', st.x + st.width/2, st.y - 20 + pulse);
+                }
+            });
+
+            ctx.fillStyle = 'rgba(0,0,0,0.35)';
+            ctx.beginPath();
+            ctx.ellipse(player.x, player.y + 15, 15, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#78350f';
+            ctx.beginPath();
+            if (ctx.roundRect) {
+                ctx.roundRect(player.x - 14, player.y - 6, 28, 14, 4);
+            } else {
+                ctx.rect(player.x - 14, player.y - 6, 28, 14);
+            }
+            ctx.fill();
+
+            ctx.fillStyle = player.jacketColor;
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#451a03';
+            ctx.stroke();
+
+            ctx.fillStyle = '#d97706';
+            ctx.beginPath();
+            ctx.ellipse(player.x, player.y - 8, 20, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#b45309';
+            ctx.beginPath();
+            ctx.arc(player.x, player.y - 12, 11, Math.PI, 0);
+            ctx.fill();
+
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            ctx.arc(player.x - 5, player.y - 2, 2.5, 0, Math.PI * 2);
+            ctx.arc(player.x + 5, player.y - 2, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            if (player.name) {
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+                ctx.font = 'bold 12px "Jua", sans-serif';
+                ctx.textAlign = 'center';
+                const tagW = ctx.measureText(player.name).width + 12;
+                if (ctx.roundRect) {
+                    ctx.beginPath();
+                    ctx.roundRect(player.x - tagW/2, player.y - 34, tagW, 16, 6);
+                    ctx.fill();
+                } else {
+                    ctx.fillRect(player.x - tagW/2, player.y - 34, tagW, 16);
+                }
+                ctx.fillStyle = '#fef08a';
+                ctx.fillText(player.name, player.x, player.y - 22);
+            }
+        }
+
+        function checkNearStation() {
+            let foundNear = null;
+
+            STATIONS.forEach(st => {
+                const centerX = st.x + st.width / 2;
+                const centerY = st.y + st.height / 2;
+                const dist = Math.hypot(player.x - centerX, player.y - centerY);
+
+                if (dist < 95) {
+                    foundNear = st;
+                }
+            });
+
+            const prompt = document.getElementById('interaction-prompt');
+            const promptName = document.getElementById('prompt-station-name');
+            const guideText = document.getElementById('guide-text');
+
+            if (!prompt || !promptName || !guideText) return;
+
+            if (foundNear) {
+                currentStation = foundNear;
+                promptName.textContent = `${foundNear.icon} ${foundNear.title} 탐험하기`;
+                prompt.classList.remove('hidden');
+                guideText.textContent = `[${foundNear.title}] 도착! 아래 [탐험하기] 버튼을 누르세요!`;
+            } else {
+                currentStation = null;
+                prompt.classList.add('hidden');
+                guideText.textContent = `탐험가를 건물 근처로 이동시켜 보세요! (건물 클릭 시 자동 이동)`;
+            }
+        }
+
+        function setupCanvasClick() {
+            if (!canvas) return;
+
+            canvas.addEventListener('click', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const clickX = (e.clientX - rect.left) * scaleX;
+                const clickY = (e.clientY - rect.top) * scaleY;
+
+                let clickedStation = null;
+
+                STATIONS.forEach(st => {
+                    if (clickX >= st.x - 15 && clickX <= st.x + st.width + 15 &&
+                        clickY >= st.y - 15 && clickY <= st.y + st.height + 25) {
+                        clickedStation = st;
+                    }
+                });
+
+                if (clickedStation) {
+                    const doorX = clickedStation.x + clickedStation.width / 2;
+                    const doorY = clickedStation.y + clickedStation.height + 25;
+                    const distToDoor = Math.hypot(player.x - doorX, player.y - doorY);
+
+                    if (distToDoor < 95) {
+                        openStationModal(clickedStation);
+                    } else {
+                        player.targetX = doorX;
+                        player.targetY = doorY;
+                    }
+                } else {
+                    player.targetX = clickX;
+                    player.targetY = clickY;
+                }
+            });
+        }
+
+        function openCurrentStation() {
+            if (currentStation) {
+                openStationModal(currentStation);
+            }
+        }
+
+        function openStationModal(st) {
+            currentStation = st;
+            playAudioSfx('open');
+
+            document.getElementById('modal-icon').textContent = st.icon;
+            document.getElementById('modal-title').textContent = st.title;
+            document.getElementById('modal-subtitle').textContent = `3학년 사회: ${st.subtitle}`;
+
+            document.getElementById('article-headline').textContent = st.article.headline;
+            const articleSource = document.getElementById('article-source');
+            if (articleSource) articleSource.textContent = st.article.source;
+            document.getElementById('article-body').textContent = st.article.body;
+            document.getElementById('vocab-word').textContent = `${st.article.vocab}:`;
+            document.getElementById('vocab-desc').textContent = st.article.vocabDesc;
+
+            document.getElementById('video-thumb').src = st.article.videoThumb;
+            document.getElementById('video-link-btn').href = st.article.videoUrl;
+            document.getElementById('video-desc-text').textContent = st.article.videoTitle;
+
+            document.getElementById('quiz-question').textContent = `Q. ${st.quiz.question}`;
+            const optionsContainer = document.getElementById('quiz-options');
+            optionsContainer.innerHTML = '';
+
+            st.quiz.options.forEach((optText, idx) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left p-4 rounded-2xl border-2 border-slate-200 hover:border-amber-400 bg-white hover:bg-amber-50/60 font-jua text-lg text-slate-800 transition shadow-sm flex items-center justify-between hover:scale-[1.01]";
+                btn.innerHTML = `<span>${idx + 1}. ${optText}</span> <i class="fa-regular fa-circle text-slate-300 text-xl"></i>`;
+                btn.onclick = () => submitQuizAnswer(idx, btn);
+                optionsContainer.appendChild(btn);
+            });
+
+            const feedback = document.getElementById('quiz-feedback');
+            feedback.classList.add('hidden');
+
+            switchTab('news');
+            document.getElementById('station-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('station-modal').classList.add('hidden');
+            playAudioSfx('close');
+        }
+
+        function switchTab(tab) {
+            const newsTabBtn = document.getElementById('tab-btn-news');
+            const quizTabBtn = document.getElementById('tab-btn-quiz');
+            const newsContent = document.getElementById('tab-content-news');
+            const quizContent = document.getElementById('tab-content-quiz');
+
+            if (tab === 'news') {
+                newsTabBtn.className = "flex-1 py-3 rounded-2xl border-b-2 border-amber-500 text-amber-600 bg-amber-50/80 flex items-center justify-center gap-2 font-bold shadow-sm";
+                quizTabBtn.className = "flex-1 py-3 rounded-t-2xl border-b-2 border-transparent text-slate-400 hover:text-slate-600 flex items-center justify-center gap-2";
+                newsContent.classList.remove('hidden');
+                quizContent.classList.add('hidden');
+            } else {
+                quizTabBtn.className = "flex-1 py-3 rounded-2xl border-b-2 border-amber-500 text-amber-600 bg-amber-50/80 flex items-center justify-center gap-2 font-bold shadow-sm";
+                newsTabBtn.className = "flex-1 py-3 rounded-t-2xl border-b-2 border-transparent text-slate-400 hover:text-slate-600 flex items-center justify-center gap-2";
+                quizContent.classList.remove('hidden');
+                newsContent.classList.add('hidden');
+            }
+        }
+
+        function submitQuizAnswer(selectedIdx, btnElement) {
+            if (!currentStation) return;
+
+            const isCorrect = selectedIdx === currentStation.quiz.answer;
+            const feedback = document.getElementById('quiz-feedback');
+            feedback.classList.remove('hidden');
+
+            if (isCorrect) {
+                playAudioSfx('success');
+                btnElement.className = "w-full text-left p-4 rounded-2xl border-2 border-emerald-500 bg-emerald-50 font-jua text-lg text-emerald-950 flex items-center justify-between shadow-md";
+                btnElement.querySelector('i').className = "fa-solid fa-circle-check text-emerald-500 text-2xl";
+
+                feedback.className = "p-4 rounded-2xl font-jua text-center text-lg bg-emerald-100 text-emerald-900 border-2 border-emerald-300 shadow-sm";
+                feedback.innerHTML = `🎉 정답입니다! [${currentStation.gemName}] 보석을 획득했습니다!`;
+
+                collectedGems.add(currentStation.id);
+                updateGemInventoryUI();
+
+                if (collectedGems.size === STATIONS.length) {
+                    setTimeout(() => {
+                        closeModal();
+                        showGrandRewardModal();
+                    }, 1300);
+                }
+            } else {
+                playAudioSfx('fail');
+                btnElement.className = "w-full text-left p-4 rounded-2xl border-2 border-rose-400 bg-rose-50 font-jua text-lg text-rose-950 flex items-center justify-between shadow-sm";
+                btnElement.querySelector('i').className = "fa-solid fa-circle-xmark text-rose-500 text-2xl";
+
+                feedback.className = "p-4 rounded-2xl font-jua text-center text-lg bg-rose-100 text-rose-900 border-2 border-rose-300 shadow-sm";
+                feedback.innerHTML = `❌ 아쉬워요! 뉴스 내용을 다시 읽어보고 맞춰보세요.`;
+            }
+        }
+
+        function updateGemInventoryUI() {
+            const container = document.getElementById('gem-inventory');
+            if (!container) return;
+            container.innerHTML = '';
+
+            STATIONS.forEach(st => {
+                const isCollected = collectedGems.has(st.id);
+                const slot = document.createElement('div');
+                slot.className = `w-8 h-8 rounded-xl flex items-center justify-center text-base shadow-sm transition-transform duration-300 ${isCollected ? 'bg-amber-400 border border-white gem-glow scale-110' : 'bg-slate-800 text-slate-600 border border-slate-700/80'}`;
+                slot.title = `${st.title}: ${st.gemName}`;
+                slot.innerHTML = isCollected ? '💎' : '⚪';
+                container.appendChild(slot);
+            });
+        }
+
+        function showGrandRewardModal() {
+            playAudioSfx('fanfare');
+            const grid = document.getElementById('reward-gem-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+
+            STATIONS.forEach(st => {
+                const item = document.createElement('div');
+                item.className = "bg-white p-2.5 rounded-2xl border border-amber-300 flex flex-col items-center shadow-sm hover:scale-105 transition";
+                item.innerHTML = `
+                    <span class="text-3xl gem-glow">💎</span>
+                    <span class="font-jua text-xs text-amber-950 mt-1">${st.gemName}</span>
+                `;
+                grid.appendChild(item);
+            });
+
+            const nameInput = document.getElementById('student-name-input');
+            if (nameInput && player.name) {
+                nameInput.value = player.name;
+            }
+
+            document.getElementById('reward-modal').classList.remove('hidden');
+        }
+
+        function closeRewardModal() {
+            document.getElementById('reward-modal').classList.add('hidden');
+        }
+
+        function openAdminModal() {
+            document.getElementById('admin-modal').classList.remove('hidden');
+            playAudioSfx('open');
+        }
+
+        function closeAdminModal() {
+            document.getElementById('admin-modal').classList.add('hidden');
+            playAudioSfx('close');
+        }
+
+        function startAdventure() {
+            const nameInput = document.getElementById('char-name-input');
+            const name = nameInput ? nameInput.value.trim() : '';
+            const warn = document.getElementById('char-name-warn');
+
+            if (!name) {
+                if (warn) warn.classList.remove('hidden');
+                nameInput.focus();
+                return;
+            }
+
+            player.name = name;
+            document.getElementById('character-modal').classList.add('hidden');
+            playAudioSfx('fanfare');
+        }
+
+        function buildSwatches() {
+            const container = document.getElementById('jacket-swatches');
+            if (!container) return;
+            container.innerHTML = '';
+            JACKET_COLORS.forEach(color => {
+                const sw = document.createElement('div');
+                sw.className = 'swatch' + (player.jacketColor === color ? ' selected' : '');
+                sw.style.backgroundColor = color;
+                sw.onclick = () => {
+                    player.jacketColor = color;
+                    Array.from(container.children).forEach(c => c.classList.remove('selected'));
+                    sw.classList.add('selected');
+                };
+                container.appendChild(sw);
+            });
+        }
+
+        window.addEventListener('keydown', e => {
+            keysPressed[e.key] = true;
+            if (e.key === ' ' || e.key === 'Enter') {
+                if (currentStation && document.getElementById('station-modal').classList.contains('hidden')) {
+                    openCurrentStation();
+                }
+            }
+        });
+
+        window.addEventListener('keyup', e => {
+            keysPressed[e.key] = false;
+        });
+
+        function startMove(dir) {
+            touchMoveDirection = dir;
+            player.targetX = null;
+            player.targetY = null;
+        }
+
+        function stopMove() {
+            touchMoveDirection = null;
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const icon = document.getElementById('sound-icon');
+            if (icon) {
+                icon.className = soundEnabled ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark';
+            }
+        }
+
+        function playAudioSfx(type) {
+            if (!soundEnabled) return;
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                const now = audioCtx.currentTime;
+
+                if (type === 'step') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(160, now);
+                    gain.gain.setValueAtTime(0.025, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+                    osc.start(now);
+                    osc.stop(now + 0.07);
+                } else if (type === 'open') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(320, now);
+                    osc.frequency.exponentialRampToValueAtTime(640, now + 0.15);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                } else if (type === 'close') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(500, now);
+                    osc.frequency.exponentialRampToValueAtTime(250, now + 0.12);
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+                    osc.start(now);
+                    osc.stop(now + 0.12);
+                } else if (type === 'success') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(523.25, now);
+                    osc.frequency.setValueAtTime(659.25, now + 0.1);
+                    osc.frequency.setValueAtTime(783.99, now + 0.2);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                    osc.start(now);
+                    osc.stop(now + 0.35);
+                } else if (type === 'fail') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(220, now);
+                    osc.frequency.setValueAtTime(170, now + 0.1);
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                } else if (type === 'fanfare') {
+                    [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+                        const o = audioCtx.createOscillator();
+                        const g = audioCtx.createGain();
+                        o.connect(g);
+                        g.connect(audioCtx.destination);
+                        o.type = 'triangle';
+                        o.frequency.setValueAtTime(freq, now + i * 0.1);
+                        g.gain.setValueAtTime(0.12, now + i * 0.1);
+                        g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.1 + 0.4);
+                        o.start(now + i * 0.1);
+                        o.stop(now + i * 0.1 + 0.4);
+                    });
+                }
+            } catch (e) {}
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            if (initGameCanvas()) {
+                setupCanvasClick();
+                updateGemInventoryUI();
+                requestAnimationFrame(gameLoop);
+            }
+            buildSwatches();
+        });
+    </script>
+</body>
+</html>
